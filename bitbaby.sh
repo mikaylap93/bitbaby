@@ -11,8 +11,13 @@ _bitchild_base_url() {
     printf 'https://bitbucket.org/%s\n' "$proj"
 }
 
+_bitchild_branch() {
+  git rev-parse --abbrev-ref HEAD
+}
+
 _bitchild_user_uuid() {
-    _BCH_UUID="{d3612a2c-7693-49d2-937a-bccd863adec4}"
+    # _BCH_UUID="{d3612a2c-7693-49d2-937a-bccd863adec4}" #Mikayla's user
+    _BCH_UUID="{a50e2d26-04a2-40de-9841-61d9440885f4}" #Brock's user
     echo "$_BCH_UUID"
 }
 
@@ -25,7 +30,7 @@ bitbaby () {
     case "${1-}" in
         --stage|--main)
           dest="${1#--}"
-          branch="$(git rev-parse --abbrev-ref HEAD)"
+          branch="$(_bitchild_branch)" || return 1
           base_url="$(_bitchild_base_url)" || return 1
     
           xdg-open "$base_url/pull-requests/new?source=$branch&dest=$dest"
@@ -33,7 +38,7 @@ bitbaby () {
           ;;
 
         --branch)
-          branch="$(git rev-parse --abbrev-ref HEAD)"
+          branch="$(_bitchild_branch)" || return 1
           base_url="$(_bitchild_base_url)" || return 1
 
           xdg-open "$base_url/branch/$branch"
@@ -41,12 +46,12 @@ bitbaby () {
           ;;
 
        --pipelines)
-         branch="$(git rev-parse --abbrev-ref HEAD)"
          base_url="$(_bitchild_base_url)" || return 1
 
          xdg-open "$base_url/pipelines"
          return
          ;;
+
        --prs)
          base_url="$(_bitchild_base_url)" || return 1
 
@@ -55,13 +60,12 @@ bitbaby () {
          ;;
 
        --selfish)
-         branch="$(git rev-parse --abbrev-ref HEAD)"
-         base_url="$(_bitchild_base_url)" || return 1
-         uuid="$(_bitchild_user_uuid)" || return 1
-         uuid_encoded="${uuid//\{/%7B}"
-         uuid_encoded="${uuid_encoded//\}/%7D}"
+          base_url="$(_bitchild_base_url)" || return 1
+          uuid="$(_bitchild_user_uuid)" || return 1
+          uuid_encoded="${uuid//\{/%7B}"
+          uuid_encoded="${uuid_encoded//\}/%7D}"
 
-         xdg-open "$base_url/pull-requests?state=ALL&author=$uuid_encoded"
+          xdg-open "$base_url/pull-requests?state=OPEN%2BDRAFT&author=$uuid_encoded"
          return
          ;;
 
@@ -70,25 +74,23 @@ bitbaby () {
 Usage: bitbaby [option]
 
 Options:
-         --main         Open a PR from the current branch to main
-         --stage        Open a PR from the current branch to stage
-         --branch       Open current branch in bitbucket
-         --selfish      Open the pull requests page filtered with just your user
-         --prs          Open the pull repquests page
-         --pipelines    Open pipelines page
-         -h, --help     Show this help message
+ --main         Open a PR from the current branch to main
+ --stage        Open a PR from the current branch to stage
+ --branch       Open current branch in bitbucket
+ --prs          Open the pull requests page
+ --selfish      Open the pull requests page filtered with just your user
+ --pipelines    Open pipelines page
+ -h, --help     Show this help message
 
 Examples:
-         bitbaby --main
-         bitbaby --branch
+ bitbaby --main
+ bitbaby --branch
 EOF
-
          return
          ;;
- 
     esac
        
-    local out url
+    # local out url
     out="$(
       docker run -i --rm \
         -e BROWSER=/bin/true \
@@ -107,5 +109,4 @@ EOF
           | tail -1)"
     [ -n "$url" ] && printf '%s\n' "$url" || printf '%s\n' "$out"
 }
-
 
