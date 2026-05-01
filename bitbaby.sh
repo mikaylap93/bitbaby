@@ -1,4 +1,13 @@
-# ~/.bashrc
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/config.env"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "_BCH_UUID=" > "$CONFIG_FILE"
+fi
+
+source "$CONFIG_FILE"
+
 _bitchild_base_url() {
     local proj
     
@@ -16,8 +25,6 @@ _bitchild_branch() {
 }
 
 _bitchild_user_uuid() {
-    # _BCH_UUID="{d3612a2c-7693-49d2-937a-bccd863adec4}" #Mikayla's user
-    _BCH_UUID="{a50e2d26-04a2-40de-9841-61d9440885f4}" #Brock's user
     echo "$_BCH_UUID"
 }
 
