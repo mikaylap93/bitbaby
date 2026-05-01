@@ -1,17 +1,27 @@
 Usage: bitbaby [option]
 
 Options:
-         --main         Open a PR from the current branch to main
-         --stage        Open a PR from the current branch to stage
-         --branch       Open current branch in bitbucket
-         --selfish      Open the pull requests page filtered with just your user
-         --prs          Open the pull repquests page
-         --pipelines    Open pipelines page
-         -h, --help     Show this help message
+  Navigation:
+    --branch       Open current branch in Bitbucket
+    --prs          Open the pull requests page
+    --pipelines    Open pipelines page
+
+  PR creation:
+    --prmain       Open a PR from the current branch to main
+    --prstage      Open a PR from the current branch to stage
+
+  Filters (can combine with --prs and eachother or be used individually):
+    --selfish      Open the pull requests page filtered with just your user
+    --stage        Open the pull requests page filtered by stage as the target branch
+    --main         Open the pull requests page filtered by main as the target branch
+
+  Other:
+    -h, --help     Show this help message
 
 Examples:
-         bitbaby --main
-         bitbaby --branch
+  bitbaby --prmain
+  bitbaby --branch
+  bitbaby --selfish --stage
 
 ---
 
