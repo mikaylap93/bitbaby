@@ -76,7 +76,7 @@ bitbaby () {
         uuid_encoded="${uuid//\{/%7B}"
         uuid_encoded="${uuid_encoded//\}/%7D}"
 
-        query="${query:+$query}&state=OPEN%2BDRAFT&author=$uuid_encoded"
+        query="${query:+$query}&author=$uuid_encoded"
         ;;
 
       --main)
@@ -139,6 +139,10 @@ EOF
   if [ "$used_filter" -eq 1 ] && [ "$page" != "prs" ]; then
     echo "Filters like --selfish can only be used with --prs"
     return 1
+  fi
+
+  if [ "$used_filter" -eq 1 ] && [ "$page" == "prs" ]; then
+    query="${query:+$query}&state=OPEN%2BDRAFT"
   fi
 
   #if still nothing, bail
