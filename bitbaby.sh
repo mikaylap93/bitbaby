@@ -29,91 +29,147 @@ _bitchild_user_uuid() {
 }
 
 bitbaby () {
-     local proj dest branch base_url out url
-     proj=$(git -C . remote get-url origin 2>/dev/null \
-        | sed -E 's#(git@|https://)bitbucket\.org[:/]##' \
-        | sed -E 's#\.git$##')
-    
-    case "${1-}" in
-        --stage|--main)
-          dest="${1#--}"
-          branch="$(_bitchild_branch)" || return 1
-          base_url="$(_bitchild_base_url)" || return 1
-    
-          xdg-open "$base_url/pull-requests/new?source=$branch&dest=$dest"
-          return
-          ;;
+  local proj dest branch base_url out url path="" query="" uuid uuid_encoded page="" used_filter=0
 
-        --branch)
-          branch="$(_bitchild_branch)" || return 1
-          base_url="$(_bitchild_base_url)" || return 1
+  proj=$(git -C . remote get-url origin 2>/dev/null \
+    | sed -E 's#(git@|https://)bitbucket\.org[:/]##' \
+    | sed -E 's#\.git$##')
 
-          xdg-open "$base_url/branch/$branch"
-          return
-          ;;
+  base_url="$(_bitchild_base_url)" || return 1
+  branch="$(_bitchild_branch | sed 's#/#%2F#g')" || return 1
 
-       --pipelines)
-         base_url="$(_bitchild_base_url)" || return 1
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      #Making PRs
+      --prmain)
+        page="newPR"
+        path="/pull-requests/new"
+        query="source=$branch&dest=main"
+        ;;
 
-         xdg-open "$base_url/pipelines"
-         return
-         ;;
+      --prstage)
+        page="newPR"
+        path="/pull-requests/new"
+        query="source=$branch&dest=stage"
+        ;;
 
-       --prs)
-         base_url="$(_bitchild_base_url)" || return 1
+      #Navigation
+      --branch)
+        page="branch"
+        path="/branch/$branch"
+        ;;
 
-         xdg-open "$base_url/pull-requests"
-         return
-         ;;
+      --pipelines)
+        page="pipelines"
+        path="/pipelines"
+        ;;
 
-       --selfish)
-          base_url="$(_bitchild_base_url)" || return 1
-          uuid="$(_bitchild_user_uuid)" || return 1
-          uuid_encoded="${uuid//\{/%7B}"
-          uuid_encoded="${uuid_encoded//\}/%7D}"
+      --prs)
+        page="prs"
+        path="/pull-requests"
+        ;;
 
-          xdg-open "$base_url/pull-requests?state=OPEN%2BDRAFT&author=$uuid_encoded"
-         return
-         ;;
+      #Filters
+      --selfish)
+        used_filter=1
+        uuid="$(_bitchild_user_uuid)" || return 1
+        uuid_encoded="${uuid//\{/%7B}"
+        uuid_encoded="${uuid_encoded//\}/%7D}"
 
-       --help|-h|"")
-         cat <<'EOF'
+        query="${query:+$query}&state=OPEN%2BDRAFT&author=$uuid_encoded"
+        ;;
+
+      --main)
+        used_filter=1
+        query="${query:+$query}&at=main"
+        ;;
+
+      --stage)
+        used_filter=1
+        query="${query:+$query}&at=stage"
+        ;;
+
+      #Help
+      --help|-h|"")
+        cat <<'EOF'
 Usage: bitbaby [option]
 
 Options:
- --main         Open a PR from the current branch to main
- --stage        Open a PR from the current branch to stage
- --branch       Open current branch in bitbucket
- --prs          Open the pull requests page
- --selfish      Open the pull requests page filtered with just your user
- --pipelines    Open pipelines page
- -h, --help     Show this help message
+  Navigation:
+    --branch       Open current branch in Bitbucket
+    --prs          Open the pull requests page
+    --pipelines    Open pipelines page
+
+  PR creation:
+    --prmain       Open a PR from the current branch to main
+    --prstage      Open a PR from the current branch to stage
+
+  Filters (can combine with --prs and eachother or be used individually):
+    --selfish      Open the pull requests page filtered with just your user
+    --stage        Open the pull requests page filtered by stage as the target branch
+    --main         Open the pull requests page filtered by main as the target branch
+
+  Other:
+    -h, --help     Show this help message
 
 Examples:
- bitbaby --main
- bitbaby --branch
+  bitbaby --prmain
+  bitbaby --branch
+  bitbaby --selfish --stage
 EOF
-         return
-         ;;
+        return
+        ;;
+
+      *)
+        echo "Unknown option: $1"
+        echo "Run 'bitbaby --help for usage'"
+        return 1
+        ;;
     esac
+    shift
+  done
+
+  #if only filters were given, default to PRs page
+  if [ -z "$page" ] && [ "$used_filter" -eq 1 ]; then
+    page="prs"
+    path="/pull-requests"
+  fi
+
+  #block invalid combos
+  if [ "$used_filter" -eq 1 ] && [ "$page" != "prs" ]; then
+    echo "Filters like --selfish can only be used with --prs"
+    return 1
+  fi
+
+  #if still nothing, bail
+  if [ -z "$path" ]; then
+    echo "No action specified. Try --help"
+    return 1
+  fi
+
+  #build final url
+  url="$base_url$path"
+  [ -n "$query" ] && url="$url?$query"
+
+  xdg-open "$url"
        
     # local out url
-    out="$(
-      docker run -i --rm \
-        -e BROWSER=/bin/true \
-        -e NO_COLOR=1 \
-        -e TERM=dumb \
-        -v "$HOME/.bitbucket-rest-cli-config.json:/root/.bitbucket-rest-cli-config.json" \
-        -v "$(pwd):/workdir" -w /workdir \
-        ghcr.io/bb-cli/bb-cli \
-        ${proj:+--project "$proj"} browse "$@" \
-        2>&1
-    )"
-    # strip ANSI, keep only URLs, print last one
-    url="$(printf '%s\n' "$out" \
-          | sed -r 's/\x1B\[[0-9;]*[A-Za-z]//g' \
-          | grep -Eo 'https?://[^[:space:]]+' \
-          | tail -1)"
-    [ -n "$url" ] && printf '%s\n' "$url" || printf '%s\n' "$out"
+  out="$(
+    docker run -i --rm \
+      -e BROWSER=/bin/true \
+      -e NO_COLOR=1 \
+      -e TERM=dumb \
+      -v "$HOME/.bitbucket-rest-cli-config.json:/root/.bitbucket-rest-cli-config.json" \
+      -v "$(pwd):/workdir" -w /workdir \
+      ghcr.io/bb-cli/bb-cli \
+      ${proj:+--project "$proj"} browse "$@" \
+      2>&1
+  )"
+  # strip ANSI, keep only URLs, print last one
+  url="$(printf '%s\n' "$out" \
+    | sed -r 's/\x1B\[[0-9;]*[A-Za-z]//g' \
+    | grep -Eo 'https?://[^[:space:]]+' \
+    | tail -1)"
+  [ -n "$url" ] && printf '%s\n' "$url" || printf '%s\n' "$out"
 }
 
