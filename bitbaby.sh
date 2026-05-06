@@ -29,7 +29,12 @@ _bitchild_user_uuid() {
 }
 
 bitbaby () {
-  local proj dest branch base_url out url path="" query="" uuid uuid_encoded page="" used_filter=0
+  local proj dest branch base_url out url path="" query="" uuid uuid_encoded page="" used_filter=0 used_main=0 used_stage=0
+
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Error: Not inside a git repository"
+    return 1
+  fi
 
   proj=$(git -C . remote get-url origin 2>/dev/null \
     | sed -E 's#(git@|https://)bitbucket\.org[:/]##' \
@@ -81,11 +86,13 @@ bitbaby () {
 
       --main)
         used_filter=1
+        used_main=1
         query="${query:+$query}&at=main"
         ;;
 
       --stage)
         used_filter=1
+        used_stage=1
         query="${query:+$query}&at=stage"
         ;;
 
@@ -151,29 +158,15 @@ EOF
     return 1
   fi
 
+  if [ "$used_stage" -eq 1 ] && [ "$used_main" -eq 1 ]; then
+    echo "Cannot use --main and --stage together"
+    return 1
+  fi
+
   #build final url
   url="$base_url$path"
   [ -n "$query" ] && url="$url?$query"
 
   xdg-open "$url"
-       
-    # local out url
-  out="$(
-    docker run -i --rm \
-      -e BROWSER=/bin/true \
-      -e NO_COLOR=1 \
-      -e TERM=dumb \
-      -v "$HOME/.bitbucket-rest-cli-config.json:/root/.bitbucket-rest-cli-config.json" \
-      -v "$(pwd):/workdir" -w /workdir \
-      ghcr.io/bb-cli/bb-cli \
-      ${proj:+--project "$proj"} browse "$@" \
-      2>&1
-  )"
-  # strip ANSI, keep only URLs, print last one
-  url="$(printf '%s\n' "$out" \
-    | sed -r 's/\x1B\[[0-9;]*[A-Za-z]//g' \
-    | grep -Eo 'https?://[^[:space:]]+' \
-    | tail -1)"
-  [ -n "$url" ] && printf '%s\n' "$url" || printf '%s\n' "$out"
 }
 
