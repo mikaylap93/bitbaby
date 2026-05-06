@@ -32,7 +32,7 @@ bitbaby () {
   local proj dest branch base_url out url path="" query="" uuid uuid_encoded page="" used_filter=0 used_main=0 used_stage=0
 
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    echo "Error: Not inside a git repository"
+    echo "You're not in a repo dumb ass!"
     return 1
   fi
 
@@ -128,8 +128,8 @@ EOF
         ;;
 
       *)
-        echo "Unknown option: $1"
-        echo "Run 'bitbaby --help for usage'"
+        echo "I have no idea what you mean by $1"
+        echo "Maybe try 'bitbaby --help' so you can learn how to talk to me properly"
         return 1
         ;;
     esac
@@ -144,7 +144,7 @@ EOF
 
   #block invalid combos
   if [ "$used_filter" -eq 1 ] && [ "$page" != "prs" ]; then
-    echo "Filters like --selfish can only be used with --prs"
+    echo "Wooooooooow... Filters like --selfish can only be used with --prs. The fact you thought those went together is almost comical."
     return 1
   fi
 
@@ -154,12 +154,12 @@ EOF
 
   #if still nothing, bail
   if [ -z "$path" ]; then
-    echo "No action specified. Try --help"
+    echo "Bruh. You gotta tell me what to do... Try --help and then maybe you'll figure it out."
     return 1
   fi
 
   if [ "$used_stage" -eq 1 ] && [ "$used_main" -eq 1 ]; then
-    echo "Cannot use --main and --stage together"
+    echo "You moron! You can't use --main and --stage together! Tell me how you think I can filter by both main and stage as the target branch. You can't can ya?"
     return 1
   fi
 
