@@ -46,13 +46,13 @@ bitbaby () {
   while [ $# -gt 0 ]; do
     case "$1" in
       #Making PRs
-      --prmain)
+      --prmain|--mainpr)
         page="newPR"
         path="/pull-requests/new"
         query="source=$branch&dest=main"
         ;;
 
-      --prstage)
+      --prstage|--stagepr)
         page="newPR"
         path="/pull-requests/new"
         query="source=$branch&dest=stage"
